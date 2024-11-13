@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automatic Traffic Control System using AI</title>
+    <style>
+        /* Basic styling for buttons and layout */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(to right, #8e2de2, #4a00e0);
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            width: 70%;
+        }
+        .upload-btn, .reset-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .upload-btn:hover, .reset-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* Flex layout for preview and signal side by side */
+        .preview-signal-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        /* Thumbnail styling */
+        .thumbnail-box {
+            width: 60%; /* Larger thumbnail box */
+            height: 300px; /* Set a fixed height */
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 20px;
+            overflow: hidden; /* Ensures content doesn’t overflow */
+        }
+        .thumbnail {
+            width: 100%;
+            height: 100%;
+            display: none; /* Hide until a file is uploaded */
+            border-radius: 5px;
+            object-fit: cover; /* Make image/video fully cover the box */
+        }
+
+        /* Traffic light styling */
+        .traffic-light {
+            width: 50px;
+            height: 150px;
+            background-color: #333;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .light {
+            width: 30px;
+            height: 30px;
+            margin: 5px auto;
+            background-color: grey;
+            border-radius: 50%;
+            transition: background-color 0.5s;
+        }
+        #red {
+            background-color: red;
+        }
+        #yellow {
+            background-color: grey;
+        }
+        #green {
+            background-color: grey;
+        }
+
+        /* Detected status container */
+        .detected-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .detected-text {
+            font-size: 1.2em;
+            margin-right: 10px;
+        }
+        .detected-btn {
+            padding: 10px 20px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            background-color: #333; /* Default "off" color */
+            transition: background-color 0.3s;
+        }
+        .detected-btn.lit {
+            background-color: #28a745; /* Green for "Yes" */
+        }
+        .detected-btn.off {
+            background-color: #dc3545; /* Red for "No" */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Automatic Traffic Control System using AI</h1>
+        <input type="file" id="fileInput" accept="image/*,video/*" onchange="showPreview()" />
+        <button class="upload-btn" onclick="uploadFile()">Find Emergency Vehicles</button>
+        <button class="reset-btn" onclick="resetTrafficLight()">Reset Traffic Signal</button>
+
+        <!-- Detected Status with Yes/No Buttons -->
+        <div class="detected-container">
+            <span class="detected-text">Ambulance Detected:</span>
+            <button id="yesButton" class="detected-btn">Yes</button>
+            <button id="noButton" class="detected-btn">No</button>
+        </div>
+
+        <!-- Preview and Traffic Light Side by Side -->
+        <div class="preview-signal-container">
+            <!-- Thumbnail Box for Image/Video Preview -->
+            <div class="thumbnail-box">
+                <img id="imagePreview" class="thumbnail" alt="Image Preview">
+                <video id="videoPreview" class="thumbnail" controls></video>
+            </div>
+
+            <!-- Traffic Light Display -->
+            <div class="traffic-light">
+                <div id="red" class="light"></div>
+                <div id="yellow" class="light"></div>
+                <div id="green" class="light"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files.length === 0) {
+                alert("Please select a file to upload.");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const ambulanceDetected = data.detected;
+                
+                // Update the traffic light and detection buttons
+                if (ambulanceDetected === "Yes") {
+                    changeTrafficLight('green');
+                    setDetectionButtons(true);
+                } else {
+                    changeTrafficLight('red');
+                    setDetectionButtons(false);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function changeTrafficLight(color) {
+            // Reset all lights to grey
+            document.getElementById('red').style.backgroundColor = 'grey';
+            document.getElementById('yellow').style.backgroundColor = 'grey';
+            document.getElementById('green').style.backgroundColor = 'grey';
+
+            // Set the specified light color
+            if (color === 'green') {
+                document.getElementById('green').style.backgroundColor = 'green';
+            } else if (color === 'red') {
+                document.getElementById('red').style.backgroundColor = 'red';
+            }
+        }
+
+        function setDetectionButtons(isDetected) {
+            // Reset both buttons
+            document.getElementById('yesButton').classList.remove('lit', 'off');
+            document.getElementById('noButton').classList.remove('lit', 'off');
+
+            // Light up the appropriate button
+            if (isDetected) {
+                document.getElementById('yesButton').classList.add('lit');
+                document.getElementById('noButton').classList.add('off');
+            } else {
+                document.getElementById('noButton').classList.add('off');
+                document.getElementById('yesButton').classList.add('off');
+            }
+        }
+
+        function resetTrafficLight() {
+            // Reset the traffic light to the initial state (red on)
+            changeTrafficLight('red');
+
+            // Remove all classes from Yes and No buttons to reset them
+            document.getElementById('yesButton').classList.remove('lit', 'off');
+            document.getElementById('noButton').classList.remove('lit', 'off');
+
+            // Hide image and video previews
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('videoPreview').style.display = 'none';
+        }
+
+        function showPreview() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const imagePreview = document.getElementById('imagePreview');
+            const videoPreview = document.getElementById('videoPreview');
+
+            if (file) {
+                const url = URL.createObjectURL(file);
+
+                // Display image or video based on file type
+                if (file.type.startsWith('image/')) {
+                    imagePreview.src = url;
+                    imagePreview.style.display = 'block';
+                    videoPreview.style.display = 'none';
+                } else if (file.type.startsWith('video/')) {
+                    videoPreview.src = url;
+                    videoPreview.style.display = 'block';
+                    imagePreview.style.display = 'none';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
